@@ -4,6 +4,8 @@
 
 To use this mod, you **must** install [MelonLoader Nightly](https://melonwiki.xyz/#/README). All mods for *Baby Steps* currently require the **Nightly** version to work.
 
+Disclaimer: This mod only hides Nate's feet. A majority of the other characters also have bare feet which are not yet hidden. If I have more free time soon, I'll try to make this mod actively search for their feet bones as well.
+
 ## Installation
 
 1. Install MelonLoader Nightly.
