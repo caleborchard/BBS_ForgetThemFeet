@@ -1,8 +1,9 @@
-﻿using Il2Cpp;
+﻿using System;
+using Il2Cpp;
 using MelonLoader;
 using UnityEngine;
 
-[assembly: MelonInfo(typeof(BBS_ForgetThemFeet.Core), "BBS_ForgetThemFeet", "1.1.0", "Caleb Orchard", null)]
+[assembly: MelonInfo(typeof(BBS_ForgetThemFeet.Core), "BBS_ForgetThemFeet", "1.1.2", "Caleb Orchard", null)]
 [assembly: MelonGame("DefaultCompany", "BabySteps")]
 
 namespace BBS_ForgetThemFeet
@@ -11,6 +12,7 @@ namespace BBS_ForgetThemFeet
     {
         PlayerMovement pm;
         bool hasHiddenFeet = false;
+        float nextWarningTime = 0f;
 
         // Config
         private MelonPreferences_Category cfg;
@@ -36,48 +38,67 @@ namespace BBS_ForgetThemFeet
         {
             if (hasHiddenFeet) return;
 
-            if (pm == null)
+            try
             {
-                GameObject dudest = GameObject.Find("Dudest");
-                if (dudest == null) return;
-                pm = dudest.GetComponent<PlayerMovement>();
-            }
-            if (pm == null) return;
-
-            Color mudColor = new Color(colorR.Value, colorG.Value, colorB.Value);
-            float scaleMul = scaleMultiplier.Value;
-
-            for (int i = 0; i < pm.feet.Count; i++)
-            {
-                FootData footData = pm.feet[i];
-                if (footData == null) continue;
-
-                Transform foot = footData.coll?.transform;
-                if (foot == null) continue;
-
-                Transform parent = foot.parent;
-                if (parent == null) continue;
-
-                Transform mudMesh = null;
-                foreach (Transform child in parent)
+                if (pm == null || pm.gameObject == null)
                 {
-                    if (child.name.Contains("_mudMesh"))
-                    {
-                        mudMesh = child;
-                        break;
-                    }
+                    GameObject dudest = GameObject.Find("Dudest");
+                    if (dudest == null) return;
+                    pm = dudest.GetComponent<PlayerMovement>();
                 }
-                if (mudMesh == null) continue;
+                if (pm == null || pm.gameObject == null) return;
+                if (pm.feet == null || pm.feet.Count == 0) return;
 
-                mudMesh.gameObject.layer = 0;
+                Color mudColor = new Color(colorR.Value, colorG.Value, colorB.Value);
+                float scaleMul = scaleMultiplier.Value;
+                bool appliedMudMeshChanges = false;
 
-                MeshRenderer renderer = mudMesh.GetComponent<MeshRenderer>();
-                if (renderer != null) renderer.material.color = mudColor;
+                for (int i = 0; i < pm.feet.Count; i++)
+                {
+                    FootData footData = pm.feet[i];
+                    if (footData == null) continue;
 
-                mudMesh.localScale *= scaleMul;
+                    Transform foot = footData.coll?.transform;
+                    if (foot == null) continue;
+
+                    Transform parent = foot.parent;
+                    if (parent == null) continue;
+
+                    Transform mudMesh = null;
+                    for (int childIndex = 0; childIndex < parent.childCount; childIndex++)
+                    {
+                        Transform child = parent.GetChild(childIndex);
+                        if (child != null && child.name.Contains("_mudMesh"))
+                        {
+                            mudMesh = child;
+                            break;
+                        }
+                    }
+                    if (mudMesh == null) continue;
+
+                    mudMesh.gameObject.layer = 0;
+
+                    MeshRenderer renderer = mudMesh.GetComponent<MeshRenderer>();
+                    if (renderer != null) renderer.material.color = mudColor;
+
+                    mudMesh.localScale *= scaleMul;
+                    appliedMudMeshChanges = true;
+                }
+
+                if (appliedMudMeshChanges)
+                {
+                    hasHiddenFeet = true;
+                }
             }
-
-            hasHiddenFeet = true;
+            catch (Exception ex)
+            {
+                pm = null;
+                if (Time.unscaledTime >= nextWarningTime)
+                {
+                    MelonLogger.Warning($"ForgetThemFeet retrying after transient setup error: {ex.Message}");
+                    nextWarningTime = Time.unscaledTime + 2f;
+                }
+            }
         }
     }
 }
